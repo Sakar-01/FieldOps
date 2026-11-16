@@ -1,0 +1,25 @@
+# The daily demo reset for hosts without a built-in scheduler (Render free has none).
+# Vercel runs it from vercel.json instead, so this only runs when the CRON_URL variable is set:
+#   Settings > Secrets and variables > Actions:
+#     variable CRON_URL = https://<your-app>.onrender.com/api/cron/daily
+#     secret   CRON_SECRET = the same value as the app's CRON_SECRET
+name: Daily cron
+
+on:
+  schedule:
+    - cron: "30 20 * * *" # 02:00 in India
+  workflow_dispatch:
+
+jobs:
+  run:
+    if: ${{ vars.CRON_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      # A sleeping Render free instance takes up to a minute to wake, hence the retries.
+      - run: >
+          curl --fail-with-body --silent --show-error --max-time 120
+          --retry 3 --retry-delay 20 --retry-all-errors
+          -H "Authorization: Bearer $CRON_SECRET" "$CRON_URL"
+        env:
+          CRON_URL: ${{ vars.CRON_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
