@@ -21,26 +21,12 @@ More: [jobs list](docs/screenshots/jobs.png), [job detail](docs/screenshots/job-
 
 ## Run it locally
 
-With Docker (includes MongoDB):
-
-```bash
-docker compose up
-docker compose exec app npm run indexes:docker
-docker compose exec app npm run seed:docker
-```
-
-The container keeps its own `node_modules`, so after dependencies change (a pull that touches
-`package.json`), rebuild it: `docker compose up -d --build --renew-anon-volumes`. Otherwise the
-dev server reports "Module not found" for the new packages.
-
-Without Docker, using a locally installed MongoDB (Windows service). Transactions need a replica
-set, so run the one-time setup script from an **elevated** PowerShell first:
+You need Node 22+ and MongoDB installed locally (on Windows, the MongoDB service). Transactions
+need a replica set, so run the one-time setup script from an **elevated** PowerShell first:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\setup-local-mongo.ps1
 ```
-
-Then:
 
 ```bash
 cp .env.example .env   # then set JWT_SECRET
@@ -58,25 +44,24 @@ to find the current suite".
 
 ## Deploy
 
-FieldOps runs on **Vercel** (recommended: built for Next.js, cron included) or **Render**. Both
-need the same three free services:
+FieldOps deploys to **Vercel**, with three free services alongside it:
 
 | Service                                        | Needed?                    | Why                                                                                 |
 | ---------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
 | [MongoDB Atlas](https://www.mongodb.com/atlas) | Yes                        | The database. Atlas clusters are replica sets, which booking transactions need.     |
-| [Cloudinary](https://cloudinary.com)           | Yes, for photos/signatures | Both hosts wipe the server's disk on redeploy, so uploads can't be kept locally.    |
+| [Cloudinary](https://cloudinary.com)           | Yes, for photos/signatures | Vercel has no lasting disk, so uploads can't be kept on the server.                 |
 | [Upstash Redis](https://upstash.com)           | Recommended                | Shared rate limits. Without it the app falls back to per-instance in-memory limits. |
 
 ### 1. Database (once)
 
 1. Create an Atlas free cluster, a database user, and under **Network Access** allow
-   `0.0.0.0/0` (Vercel and Render have no fixed outbound IPs).
+   `0.0.0.0/0` (Vercel has no fixed outbound IPs).
 2. Copy the SRV URL with a database name, e.g.
    `mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/fieldops`.
 3. Put it in a local `.env.production.local` as `MONGODB_URI=...` (ignored by git), then run
    `npm run setup:prod`. That creates the indexes and the demo business.
 
-### 2a. Vercel
+### 2. Vercel
 
 1. Import the repository in Vercel. The framework is detected; `vercel.json` sets the install
    command and the daily cron.
@@ -85,18 +70,6 @@ need the same three free services:
    the two `UPSTASH_*` values, a random `CRON_SECRET`, and `APP_URL` (the production URL).
 3. Deploy. Vercel calls `/api/cron/daily` at 20:30 UTC (02:00 in India) with the `CRON_SECRET`
    as a bearer token; it resets the demo and deletes orphan uploads.
-
-### 2b. Render
-
-1. In Render choose **New > Blueprint** and pick the repository. `render.yaml` defines a free
-   Node web service in Singapore, generates `JWT_SECRET` and `CRON_SECRET`, and asks for the rest.
-   Set `APP_URL` to the `https://<name>.onrender.com` URL.
-2. Render's free plan has no cron, so the daily reset runs from GitHub Actions
-   (`.github/workflows/daily-cron.yml`). In the GitHub repository settings add the variable
-   `CRON_URL` = `https://<name>.onrender.com/api/cron/daily` and the secret `CRON_SECRET`
-   (copy it from the Render service).
-3. Free Render instances sleep after 15 minutes idle; the first request after that takes up to a
-   minute.
 
 ### Checks on start-up
 
@@ -160,7 +133,7 @@ rules, and the repository queries MongoDB with the `businessId` from the session
   picker, so an email has to identify one user. This adds to the spec's per-business index. The
   trade-off is that a person can't use one email at two businesses, and adding an email that's
   already in use elsewhere reveals that it exists.
-- **MongoDB runs as a replica set everywhere**, including Docker and tests, because booking a job
+- **MongoDB runs as a replica set everywhere**, including local development and tests, because booking a job
   uses a transaction and standalone MongoDB doesn't support them.
 - **Double-booking is blocked inside a transaction.** Checking for an overlapping job and then
   writing is a race: two dispatchers could each see a free slot and both book it. Every booking
@@ -201,8 +174,8 @@ rules, and the repository queries MongoDB with the `businessId` from the session
   signature files; their completion is history, not something a visitor repeats.
 - **Rate limiting fails open.** Without Upstash variables it is off in development and tests (no
   cloud account needed). In production without Upstash it falls back to an in-memory limiter per
-  server instance: complete on a single Render instance, weaker on Vercel where each instance
-  counts separately, but never nothing. If Redis is configured but unreachable, the request is
+  server instance. On Vercel each instance counts separately, so this is weaker than Upstash, but
+  never nothing. If Redis is configured but unreachable, the request is
   allowed and the outage logged, rather than locking everyone out.
 - **The server refuses to start with a broken production config.** `instrumentation.ts` checks
   the environment once at start-up, so a missing database URL or Cloudinary key shows up as one

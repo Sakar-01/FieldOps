@@ -38,8 +38,8 @@ export function checkProductionConfig(env: NodeJS.ProcessEnv): ConfigReport {
     }
   } else {
     warnings.push(
-      "STORAGE_DRIVER is not cloudinary: uploads go to the server's disk, which Vercel and " +
-        "Render free instances wipe on every deploy or restart",
+      "STORAGE_DRIVER is not cloudinary: uploads go to the server's disk, which Vercel " +
+        "does not keep between requests or deploys",
     );
   }
 

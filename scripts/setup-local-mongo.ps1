@@ -26,15 +26,29 @@ Set-Service -Name MongoDB -StartupType Automatic
 Restart-Service -Name MongoDB -Force
 Write-Host "MongoDB service restarted"
 
-$mongosh = (Get-Command mongosh -ErrorAction SilentlyContinue).Source
-if (-not $mongosh) { throw "mongosh not found on PATH; run rs.initiate() yourself." }
-
-$init = @'
-try { rs.status().ok && print("Replica set already initiated") }
-catch (e) { rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "127.0.0.1:27017" }] }); print("Replica set rs0 initiated") }
+# Initiate the replica set with the project's own MongoDB driver, so mongosh isn't needed.
+# The JavaScript uses single quotes only: PowerShell 5.1 strips double quotes from native arguments.
+# Without this step the server stays "not primary" and refuses every write.
+$initiate = @'
+const { MongoClient } = require('mongodb');
+(async () => {
+  const client = new MongoClient('mongodb://127.0.0.1:27017/?directConnection=true', { serverSelectionTimeoutMS: 15000 });
+  await client.connect();
+  const admin = client.db().admin();
+  try {
+    await admin.command({ replSetGetStatus: 1 });
+    console.log('Replica set already initiated');
+  } catch {
+    await admin.command({ replSetInitiate: { _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] } });
+    console.log('Replica set rs0 initiated');
+  }
+  for (let i = 0; i < 30; i++) {
+    if ((await admin.command({ hello: 1 })).isWritablePrimary) { console.log('MongoDB is primary and ready'); break; }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  await client.close();
+})().catch((e) => { console.error(e.message); process.exit(1); });
 '@
-for ($i = 0; $i -lt 10; $i++) {
-  & $mongosh --quiet "mongodb://127.0.0.1:27017/?directConnection=true" --eval $init
-  if ($LASTEXITCODE -eq 0) { break }
-  Start-Sleep -Seconds 1
-}
+Push-Location (Split-Path $PSScriptRoot -Parent)
+try { node -e $initiate; if ($LASTEXITCODE -ne 0) { throw "Replica set initiation failed" } }
+finally { Pop-Location }

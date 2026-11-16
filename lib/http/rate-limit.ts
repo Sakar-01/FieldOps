@@ -36,7 +36,7 @@ function getLimiter(kind: RateLimitKind): Ratelimit | null {
 
 /**
  * Fallback when Upstash isn't configured in production. Fixed one-minute windows per server
- * instance: fine for a single Render instance, weaker on Vercel where instances don't share it.
+ * instance: weaker than Upstash on Vercel, where instances don't share it, but never nothing.
  */
 const memoryHits = new Map<string, { count: number; resetAt: number }>();
 

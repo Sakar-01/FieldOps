@@ -14,9 +14,7 @@
     "format:check": "prettier --check .",
     "indexes": "tsx --env-file=.env scripts/create-indexes.ts",
     "prepare": "husky",
-    "indexes:docker": "tsx scripts/create-indexes.ts",
     "seed": "tsx --env-file=.env scripts/seed.ts",
-    "seed:docker": "tsx scripts/seed.ts",
     "setup:prod": "tsx --env-file=.env.production.local scripts/seed.ts",
     "test:e2e": "playwright test",
     "explain": "tsx --env-file=.env scripts/explain.ts"
@@ -47,7 +45,6 @@
     "react-hook-form": "^7.91.0",
     "react-signature-canvas": "^1.1.0-alpha.2",
     "recharts": "^3.8.0",
-    "server-only": "^0.0.1",
     "shadcn": "^4.23.0",
     "sonner": "^2.0.8",
     "swagger-ui-dist": "^5.35.0",

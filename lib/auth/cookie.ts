@@ -4,7 +4,7 @@ import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from "./constants";
 
 const baseOptions = () => ({
   httpOnly: true,
-  // Off outside production so Docker and plain-http local dev still work.
+  // Off outside production so plain-http local dev still works.
   secure: isProduction(),
   sameSite: "lax" as const,
   path: "/",

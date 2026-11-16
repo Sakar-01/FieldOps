@@ -32,10 +32,9 @@ the Playwright step runs on `main` only.
 **Windows:** run Vitest from a shell whose cwd is `C:\work\...` with an uppercase drive letter.
 From `c:\...` Vitest loads twice and every suite fails with "failed to find the current suite".
 
-**MongoDB must be a replica set** everywhere because job booking uses transactions. Docker
-Compose and the tests already do this; a local Windows service needs
-`scripts\setup-local-mongo.ps1` run once as Administrator. The Docker app container keeps its own
-`node_modules` volume, so after dependency changes: `docker compose up -d --build --renew-anon-volumes`.
+**MongoDB must be a replica set** everywhere because job booking uses transactions. The tests
+start their own; the local Windows service needs `scripts\setup-local-mongo.ps1` run once as
+Administrator.
 
 `npm run test:e2e` starts its own server via `scripts/e2e-server.ts` (in-memory replica set,
 seeded demo, `next start` on port 3100) and uses the installed Chrome locally (no browser download).
@@ -105,8 +104,7 @@ the "Try as" login buttons (`POST /api/auth/demo`) and the daily cron (`/api/cro
 - Swagger UI is bundled from `swagger-ui-dist` because the CSP in `next.config.ts` allows only
   same-origin scripts. Nothing may load from a CDN.
 - Cache Components stays off on purpose (all data is per tenant).
-- Deploys to Vercel (`vercel.json`, cron included) or Render (`render.yaml`, daily cron via
-  `.github/workflows/daily-cron.yml`). `instrumentation.ts` validates the production environment
+- Deploys to Vercel (`vercel.json`, cron included). `instrumentation.ts` validates the production environment
   at start-up with `checkProductionConfig()` in `lib/env.ts`.
 
 ## Tests
