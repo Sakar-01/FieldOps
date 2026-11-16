@@ -9,7 +9,6 @@ requirements are in `FieldOps.pdf`.
 **Try it:** open the app and click **Try as Owner** or **Try as Technician** on the login page.
 Both use a seeded demo business that resets every night.
 
-<!-- Demo video: add the 2-minute walkthrough link here. -->
 
 | Dashboard                                    | Technician (phone)                               |
 | -------------------------------------------- | ------------------------------------------------ |
